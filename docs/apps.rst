@@ -77,6 +77,8 @@ Applications
 
 .. automodule:: weather
 
+.. automodule:: edit_exec
+
 Games
 -----
 

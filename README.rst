@@ -294,3 +294,6 @@ Other apps: (The "blank" white screenshot is a flashlight app)
    :alt: Weather application running in the wasp-os simulator
    :width: 179
 
+.. image:: res/screenshots/EditExec.png
+   :alt: EditExec application running in the wasp-os simulator
+   :width: 179
