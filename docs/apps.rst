@@ -23,6 +23,8 @@ Watch faces
 
 .. automodule:: word_clock
 
+.. automodule:: tide_clock
+		
 Built-in
 --------
 

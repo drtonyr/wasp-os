@@ -173,6 +173,10 @@ Watch faces:
    :alt: Shows a time as words in the wasp-os simulator
    :width: 179
 
+.. image:: res/screenshots/TideClockApp.png
+   :alt: Digital clock with tide times running on the wasp-os simulator
+   :width: 179
+
 Games:
 
 .. image:: res/screenshots/Play2048App.png
