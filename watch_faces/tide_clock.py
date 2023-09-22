@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-# Copyright (C) 2020 Daniel Thompson
+# Copyright (C) 2023 Tony Robinson
 
 """Digital clock with next tide times
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,6 +22,7 @@ https://www.tidetime.org/
     :width: 179
 """
 
+import time
 import wasp
 
 import fonts.clock as digits
@@ -33,6 +34,8 @@ DIGITS = (
 )
 
 MONTH = 'JanFebMarAprMayJunJulAugSepOctNovDec'
+
+NTIDE = 4 # number of High/Low tide to display
 
 class TideClockApp():
     """Simple digital clock application."""
@@ -74,13 +77,20 @@ class TideClockApp():
         wasp.system.bar.clock = False
         self._draw(True)
 
+    def tideLine(self, tstamp, high, y):
+        draw = wasp.watch.drawable
+        h, m = time.localtime(tstamp)[3:5]
+        draw.string('%02d:%02d' % (h, m), 0, y)
+        draw.string('%s' % ('High' if high else 'Low'), 90, y, width=60)
+        draw.string('%0.1fh' % ((tstamp - wasp.watch.rtc.time()) / 3600), 160, y)
+
     def _day_string(self, now):
         """Produce a string representing the current day"""
         # Format the month as text
         month = now[1] - 1
         month = MONTH[month*3:(month+1)*3]
 
-        return '{} {} {}'.format(now[2], month, now[0])
+        return "{} {} '{}".format(now[2], month, now[0] % 100)
 
     def _draw(self, redraw=False):
         """Draw or lazily update the display.
@@ -96,7 +106,7 @@ class TideClockApp():
 
             # Clear the display and draw that static parts of the watch face
             draw.fill()
-            draw.blit(digits.clock_colon, 2*48, 55)
+            draw.blit(digits.clock_colon, 2*48, 40)
 
             # Redraw the status bar
             wasp.system.bar.draw()
@@ -112,14 +122,21 @@ class TideClockApp():
 
         # Draw the changeable parts of the watch face
         draw.string(self._day_string(now), 40, 8, width=160)
-        draw.blit(DIGITS[now[4]  % 10], 4*48, 56)
-        draw.blit(DIGITS[now[4] // 10], 3*48, 56)
-        draw.blit(DIGITS[now[3]  % 10], 1*48, 56)
-        draw.blit(DIGITS[now[3] // 10], 0*48, 56)
-        draw.string('20:14 Low 3.5h', 0, 144, width=240)
-        draw.string('02:10 High 11.5h', 0, 168, width=240)
-        draw.string('08:06 Low  17.5h', 0, 192, width=240)
-        draw.string('14:02 High 23.5h)', 0, 216, width=240)
+        draw.blit(DIGITS[now[4]  % 10], 4*48, 48)
+        draw.blit(DIGITS[now[4] // 10], 3*48, 48)
+        draw.blit(DIGITS[now[3]  % 10], 1*48, 48)
+        draw.blit(DIGITS[now[3] // 10], 0*48, 48)
+        site = 'Holkham with a load of other text'
+        chunk = draw.wrap(site, 240)
+        draw.string(site[:chunk[1]], 0, 145 - 24, width=240)
+        for i in range(NTIDE):
+          tstamp = wasp.watch.rtc.time() + (6 * 60 + 25) * 60 * i + 3600
+          high = i % 2 == 0
+          y = 145 + 24 * i
+          h, m = time.localtime(tstamp)[3:5]
+          draw.string('%s' % ('High' if high else 'Low'), 5, y)
+          draw.string('%02d:%02d' % (h, m), 80, y, width=80)
+          draw.string('%0.1fh' % ((tstamp - wasp.watch.rtc.time()) / 3600), 165, y)
 
         # Record the minute that is currently being displayed
         self._min = now[4]
