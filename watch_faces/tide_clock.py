@@ -41,6 +41,31 @@ class TideClockApp():
     """Simple digital clock application."""
     NAME = 'Tide Clock'
 
+    def __init__(self):
+        self.nlocation = 0
+        self._load_location()
+
+    def _load_location(self):
+        nlocation = 0
+        self.location = None
+        # with open('/home/tonyr/wasp-os-tony' + '/flash/apps/TideClock/locations.txt') as f:
+        with open('/flash/apps/TideClock/locations.txt') as f:
+            for line in f:
+                if not line.startswith('#'):
+                    if nlocation == self.nlocation:
+                        data = line.strip().split(',')
+                        self.location = data[0]
+                        self.wavedata = [ float(item) for item in data[1:] ]
+                        break
+                    nlocation += 1
+        # if self.nlocation not found then wrap
+        if not self.location:
+            self.nlocation = 0
+            self._load_location()
+
+        # we've changed location so no longer have any stored timestamps
+        self.timestamp = None
+        
     def foreground(self):
         """Activate the application.
 
@@ -49,7 +74,8 @@ class TideClockApp():
         """
         wasp.system.bar.clock = False
         self._draw(True)
-        wasp.system.request_tick(1000)
+        wasp.system.request_event(wasp.EventMask.SWIPE_UPDOWN)
+        wasp.system.request_tick(1000)        
 
     def sleep(self):
         """Prepare to enter the low power mode.
@@ -77,21 +103,14 @@ class TideClockApp():
         wasp.system.bar.clock = False
         self._draw(True)
 
-    def tideLine(self, tstamp, high, y):
-        draw = wasp.watch.drawable
-        h, m = time.localtime(tstamp)[3:5]
-        draw.string('%02d:%02d' % (h, m), 0, y)
-        draw.string('%s' % ('High' if high else 'Low'), 90, y, width=60)
-        draw.string('%0.1fh' % ((tstamp - wasp.watch.rtc.time()) / 3600), 160, y)
-
-    def _day_string(self, now):
-        """Produce a string representing the current day"""
-        # Format the month as text
-        month = now[1] - 1
-        month = MONTH[month*3:(month+1)*3]
-
-        return "{} {} '{}".format(now[2], month, now[0] % 100)
-
+    def swipe(self, event):
+        if event[0] == wasp.EventType.DOWN:
+            self.nlocation += 1
+            self._load_location()
+            self._draw(True)
+        else:
+            return True            
+     
     def _draw(self, redraw=False):
         """Draw or lazily update the display.
 
@@ -121,22 +140,37 @@ class TideClockApp():
                 return
 
         # Draw the changeable parts of the watch face
-        draw.string(self._day_string(now), 40, 8, width=160)
+        month = MONTH[3*now[1]-3:3*now[1]]
+        draw.string("{} {} '{}".format(now[2], month, now[0] % 100), 40, 8, width=160)
         draw.blit(DIGITS[now[4]  % 10], 4*48, 48)
         draw.blit(DIGITS[now[4] // 10], 3*48, 48)
         draw.blit(DIGITS[now[3]  % 10], 1*48, 48)
         draw.blit(DIGITS[now[3] // 10], 0*48, 48)
-        site = 'Holkham with a load of other text'
-        chunk = draw.wrap(site, 240)
-        draw.string(site[:chunk[1]], 0, 145 - 24, width=240)
+        chunk = draw.wrap(self.location, 240)  # later add char=True
+        draw.string(self.location[:chunk[1]], 0, 120, width=240)
+
+        # check that we have valid timestamps, update if not
+        rtcTime = wasp.watch.rtc.time()
+        if not self.timestamp or rtcTime > self.timestamp[0][0]:
+          period = 44714.16432
+          part = 1 - ((rtcTime + self.wavedata[0]) / period) % 1 # BEWARE, this is float not double
+          high = True
+          if part > 0.5:
+            high = False
+            part -= 0.5
+          self.timestamp = []
+          for i in range(NTIDE):
+            self.timestamp.append((rtcTime + int(part * period), high))
+            part += 0.5
+            high = not high
+
         for i in range(NTIDE):
-          tstamp = wasp.watch.rtc.time() + (6 * 60 + 25) * 60 * i + 3600
-          high = i % 2 == 0
           y = 145 + 24 * i
+          tstamp = self.timestamp[i][0]
           h, m = time.localtime(tstamp)[3:5]
-          draw.string('%s' % ('High' if high else 'Low'), 5, y)
+          draw.string('%s' % ('High' if self.timestamp[i][1] else 'Low'), 5, y)
           draw.string('%02d:%02d' % (h, m), 80, y, width=80)
-          draw.string('%0.1fh' % ((tstamp - wasp.watch.rtc.time()) / 3600), 165, y)
+          draw.string('%0.1fh' % ((tstamp - rtcTime) / 3600), 165, y)
 
         # Record the minute that is currently being displayed
         self._min = now[4]
