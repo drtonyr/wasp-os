@@ -22,6 +22,7 @@ https://www.tidetime.org/
     :width: 179
 """
 
+import math
 import time
 import wasp
 
@@ -37,25 +38,31 @@ MONTH = 'JanFebMarAprMayJunJulAugSepOctNovDec'
 
 NTIDE = 4 # number of High/Low tide to display
 
+# set MICROPY to be True and assume running on watch, else False and running in sim
+# MICROPY = len(dir(time)) == 16
+
 class TideClockApp():
     """Simple digital clock application."""
     NAME = 'Tide Clock'
 
     def __init__(self):
+        # self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1))
+        self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1, 0))
         self.nlocation = 0
         self._load_location()
 
     def _load_location(self):
         nlocation = 0
         self.location = None
-        # with open('/home/tonyr/wasp-os-tony' + '/flash/apps/TideClock/locations.txt') as f:
-        with open('/flash/apps/TideClock/locations.txt') as f:
+
+        with open('/home/tonyr/wasp-os-tony/flash/apps/TideClock/locations.txt') as f:
+        # with open('/flash/apps/TideClock/locations.txt') as f:
             for line in f:
                 if not line.startswith('#'):
                     if nlocation == self.nlocation:
                         data = line.strip().split(',')
                         self.location = data[0]
-                        self.wavedata = [ float(item) for item in data[1:] ]
+                        self.wavedata = [ int(item) for item in data[1:] ]
                         break
                     nlocation += 1
         # if self.nlocation not found then wrap
@@ -140,37 +147,51 @@ class TideClockApp():
                 return
 
         # Draw the changeable parts of the watch face
+        # This is the standard time and date, the date is squeezed in at
+        # the top and the time just below it
         month = MONTH[3*now[1]-3:3*now[1]]
         draw.string("{} {} '{}".format(now[2], month, now[0] % 100), 40, 8, width=160)
         draw.blit(DIGITS[now[4]  % 10], 4*48, 48)
         draw.blit(DIGITS[now[4] // 10], 3*48, 48)
         draw.blit(DIGITS[now[3]  % 10], 1*48, 48)
         draw.blit(DIGITS[now[3] // 10], 0*48, 48)
-        chunk = draw.wrap(self.location, 240)  # later add char=True
-        draw.string(self.location[:chunk[1]], 0, 120, width=240)
 
-        # check that we have valid timestamps, update if not
+        # check that we have valid timestamps for next tides, update if not
         rtcTime = wasp.watch.rtc.time()
         if not self.timestamp or rtcTime > self.timestamp[0][0]:
           period = 44714.16432
-          part = 1 - ((rtcTime + self.wavedata[0]) / period) % 1 # BEWARE, this is float not double
+          # use fixed point arithmatic to get an integer base
+          base = rtcTime - (((rtcTime - self.t0 + self.wavedata[0]) * 100000) % 4471416432) // 100000 + int(period)
           high = True
-          if part > 0.5:
+          if (base - rtcTime) / period > 0.5:
             high = False
-            part -= 0.5
+            base -= int((period + 0.5) / 2)
           self.timestamp = []
           for i in range(NTIDE):
-            self.timestamp.append((rtcTime + int(part * period), high))
-            part += 0.5
+            self.timestamp.append((base, high))
+            base += int((period + 0.5) / 2)
             high = not high
+
+        # display the current location and the percentage of high tide
+        part = (self.timestamp[0][0] - rtcTime) / (self.timestamp[1][0] - self.timestamp[0][0])
+        if self.timestamp[1][1]:
+          part = 1 - part
+        percent = ' %0.f%%' % (50 * math.cos(math.pi * part) + 50)
+        x = 240 - draw.bounding_box(percent)[0]
+        print('x:', x)
+        print(self.location)
+        chunk = draw.wrap(self.location, x)
+        print(draw.bounding_box(self.location[:chunk[1]].strip()))
+        draw.string(self.location[:chunk[1]].strip(), 0, 120, width=x+1)
+        draw.string(percent, x+1, 120)
 
         for i in range(NTIDE):
           y = 145 + 24 * i
           tstamp = self.timestamp[i][0]
           h, m = time.localtime(tstamp)[3:5]
-          draw.string('%s' % ('High' if self.timestamp[i][1] else 'Low'), 5, y)
+          draw.string('%s' % ('High' if self.timestamp[i][1] else 'Low'), 5, y, width=75, right=False)
           draw.string('%02d:%02d' % (h, m), 80, y, width=80)
-          draw.string('%0.1fh' % ((tstamp - rtcTime) / 3600), 165, y)
+          draw.string('%0.1fh' % ((tstamp - rtcTime) / 3600), 165, y, width=75, right=True)
 
         # Record the minute that is currently being displayed
         self._min = now[4]
