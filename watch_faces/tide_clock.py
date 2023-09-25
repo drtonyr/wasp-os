@@ -55,8 +55,7 @@ class TideClockApp():
         nlocation = 0
         self.location = None
 
-        with open('/home/tonyr/wasp-os-tony/flash/apps/TideClock/locations.txt') as f:
-        # with open('/flash/apps/TideClock/locations.txt') as f:
+        with open('data/TideClock.txt') as f:
             for line in f:
                 if not line.startswith('#'):
                     if nlocation == self.nlocation:
@@ -178,12 +177,9 @@ class TideClockApp():
           part = 1 - part
         percent = ' %0.f%%' % (50 * math.cos(math.pi * part) + 50)
         x = 240 - draw.bounding_box(percent)[0]
-        print('x:', x)
-        print(self.location)
         chunk = draw.wrap(self.location, x)
-        print(draw.bounding_box(self.location[:chunk[1]].strip()))
-        draw.string(self.location[:chunk[1]].strip(), 0, 120, width=x+1)
-        draw.string(percent, x+1, 120)
+        draw.string(self.location[:chunk[1]].strip(), 0, 120, width=x, right=False)
+        draw.string(percent, x, 120)
 
         for i in range(NTIDE):
           y = 145 + 24 * i
