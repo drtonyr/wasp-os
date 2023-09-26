@@ -46,8 +46,8 @@ class TideClockApp():
     NAME = 'Tide Clock'
 
     def __init__(self):
-        # self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1))
-        self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1, 0))
+        self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1))
+        # self.t0 = time.mktime((2019, 1, 1, 0, 0, 0, -1, -1, 0))
         self.nlocation = 0
         self._load_location()
 
