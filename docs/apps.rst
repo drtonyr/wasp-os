@@ -25,6 +25,10 @@ Watch faces
 
 .. automodule:: tide_clock
 		
+=======
+.. automodule:: resistor_clock
+
+>>>>>>> a2e352229ab41c601ef9e0b5cd281c43d07c5b90
 Built-in
 --------
 
@@ -89,3 +93,5 @@ Games
 .. automodule:: puzzle15
 
 .. automodule:: snake
+
+.. automodule:: four_in_a_row
