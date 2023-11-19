@@ -23,12 +23,10 @@ Watch faces
 
 .. automodule:: word_clock
 
-.. automodule:: tide_clock
-		
-=======
 .. automodule:: resistor_clock
 
->>>>>>> a2e352229ab41c601ef9e0b5cd281c43d07c5b90
+.. automodule:: tide_clock
+		
 Built-in
 --------
 
