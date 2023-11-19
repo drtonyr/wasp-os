@@ -116,7 +116,8 @@ def _mktime(base):
 
 # takes a standard time and adds any daylight saving adjustment for a few places
 def _displayTime(t, region='Europe', offset=3600):
-    yoff = (5 * time.localtime(t)[0]) // 4
+    year = time.localtime(t)[0]
+    yoff = (5 * year) // 4
     if region == None:
         return t
     if region == 'Europe':
